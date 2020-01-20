@@ -1,0 +1,237 @@
+/*
+  Teensy 3.2 with USB cursor and mouse clicks
+  Select Serial + Keyboard + Mouse + Joystick for "USB Type:" under Tools menu
+  On/off button for mouse functionality
+  All digital switches replaced with analog fsrs
+  On/Off LED
+  Cursor movement speed pot
+
+  Last update 11/22/19
+*/
+
+const int leftLock = A9;
+const int speedPot = A13;
+const int nwButton = A8;
+const int leftButton = A7;
+const int swButton = A17;
+const int upButton = A6;
+const int leftClick = A5;
+const int downButton = A4;
+const int neButton = A3;
+const int rightButton = A2;
+const int seButton = A1;
+const int rightClick = A0;
+const int mouseOn = A16;
+
+int range = 8;              // output range of X or Y movement; affects movement speed
+int responseDelay = 20;     // response delay of the mouse, in ms
+
+int buttonPushCounter1 = 0;   // counter for the number of button presses
+int buttonState1 = 0;         // current state of the button
+int lastButtonState1 = 0;     // previous state of the button
+
+int buttonPushCounter2 = 0;   // counter for the number of button presses
+int buttonState2 = 0;         // current state of the button
+int lastButtonState2 = 0;     // previous state of the button
+
+const int led = 9;
+const int leftLockLed = 10;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(leftLock, INPUT_PULLUP);
+  pinMode(nwButton, INPUT_PULLUP);
+  pinMode(leftButton, INPUT_PULLUP);
+  pinMode(swButton, INPUT_PULLUP);
+  pinMode(upButton, INPUT_PULLUP);
+  pinMode(leftClick, INPUT_PULLUP);
+  pinMode(downButton, INPUT_PULLUP);
+  pinMode(neButton, INPUT_PULLUP);
+  pinMode(rightButton, INPUT_PULLUP);
+  pinMode(seButton, INPUT_PULLUP);
+  pinMode(rightClick, INPUT_PULLUP);
+  pinMode(mouseOn, INPUT_PULLUP);
+  pinMode(3, OUTPUT); //LL
+  pinMode(5, OUTPUT); //NW
+  pinMode(24, OUTPUT); //W
+
+  pinMode(4, OUTPUT); //N
+  pinMode(6, OUTPUT); //LC
+  pinMode(33, OUTPUT); //S
+  pinMode(32, OUTPUT); //NE
+  pinMode(31, OUTPUT); //E
+  pinMode(30, OUTPUT); //SE
+  pinMode(29, OUTPUT); //RC
+
+  digitalWrite(3, LOW);
+  digitalWrite(5, LOW);
+  digitalWrite(24, LOW);
+
+  digitalWrite(4, LOW);
+  digitalWrite(6, LOW);
+  digitalWrite(33, LOW);
+  digitalWrite(32, LOW);
+  digitalWrite(31, LOW);
+  digitalWrite(30, LOW);
+  digitalWrite(29, LOW);
+
+  pinMode(led, OUTPUT); // LED
+  pinMode(leftLockLed, OUTPUT); // LED
+}
+
+
+void loop() {
+
+  delay(10);
+  int  mouseOnState = analogRead(mouseOn);
+  Serial.println(mouseOnState);
+  if (mouseOnState <= 70) {
+    buttonState2 = 0;
+  } else {
+    buttonState2 = 1;
+  }
+
+  if (buttonState2 != lastButtonState2) {
+    if (buttonState2 == 0) {
+      buttonPushCounter2++;
+    } else {
+      //
+    }
+  }
+  lastButtonState2 = buttonState2;
+
+  // turn off mouse every two pushes
+  if (buttonPushCounter2 % 2 == 0) {
+    mouseOff();
+  } else {
+    //////////////// start of complete mouse move program ////////////////
+
+    int leftClickState = analogRead(leftClick);
+    int rightClickState = analogRead(rightClick);
+
+    int upState = analogRead(upButton);
+    int downState = analogRead(downButton);
+    int rightState = analogRead(rightButton);
+    int leftState = analogRead(leftButton);
+
+    int seState = analogRead(seButton);
+    int swState = analogRead(swButton);
+    int neState = analogRead(neButton);
+    int nwState = analogRead(nwButton);
+    int cursorSpeed = analogRead(speedPot);
+    //Serial.println(cursorSpeed);
+    Serial.println(swState);
+    int speedSteps = map(cursorSpeed, 0, 1023, 1, 8); // map to 8 speed settings
+    //Serial.println(speedSteps);
+
+    range = speedSteps;
+
+    if ((speedSteps == 1) | (speedSteps == 2)) {
+      range = 2;
+      Serial.println(range);
+    }
+    if ((speedSteps == 3) | (speedSteps == 4)) {
+      range = 4;
+      Serial.println(range);
+    }
+    if ((speedSteps == 5) | (speedSteps == 6)) {
+      range = 6;
+      Serial.println(range);
+    }
+    if ((speedSteps == 7) | (speedSteps == 8)) {
+      range = 8;
+      Serial.println(range);
+    }
+    ////////// left-click lock ////////////
+    int  leftLoftState = analogRead(leftLock);
+
+    if (leftLoftState <= 90) {
+      buttonState1 = 0;
+    } else {
+      buttonState1 = 1;
+    }
+
+    if (buttonState1 != lastButtonState1) {
+      if (buttonState1 == 0) {
+        buttonPushCounter1++;
+      } else {
+        // if the current state is LOW then the button went from on to off:
+        Serial.println("off");
+      }
+    }
+    lastButtonState1 = buttonState1;
+
+    // Locks mouse left every two pushes
+    if (buttonPushCounter1 % 2 == 0) {
+      Mouse.release(MOUSE_LEFT);
+      Serial.println("left off");
+      analogWrite(leftLockLed, 0);
+    } else {
+      Mouse.press(MOUSE_LEFT);
+      Serial.println("left on");
+      analogWrite(leftLockLed, 100);
+    }
+
+    Serial.println(leftLoftState);
+    ////////// left-click lock ////////////
+
+    if (rightClickState <= 80) {
+      Mouse.click(MOUSE_RIGHT);
+      Serial.println("right click");
+    }
+
+    if (leftClickState <= 80 ) {
+      Mouse.click();
+      Serial.println("left click");
+    }
+
+    // E
+    if (rightState <= 80) {
+      Mouse.move(range, 0);
+    }
+
+    // S
+    if (downState <= 80) {
+      Mouse.move(0, range);
+    }
+
+    // W
+    if (leftState <= 80) {
+      Mouse.move(-range, 0);
+    }
+
+    // N
+    if (upState <= 80) {
+      Mouse.move(0, -range);
+    }
+
+    // NE
+    if (neState <= 80) {
+      Mouse.move(range, -range);
+    }
+
+    // NW
+    if (nwState <= 80) {
+      Mouse.move(-range, -range);
+    }
+
+    // SW
+    if (swState <= 80) {
+      Mouse.move(-range, range);
+    }
+
+    // SE
+    if (seState <= 80) {
+      Mouse.move(range, range);
+    }
+    delay(responseDelay);
+    analogWrite(led, 200);
+  }
+}
+
+
+
+void mouseOff() {
+  Serial.println("mouse off");
+  analogWrite(led, 0);
+}
